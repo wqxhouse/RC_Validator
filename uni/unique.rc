@@ -1,0 +1,7 @@
+
+function : void main(int [2]a, bool[3]  b  , HELLO[4] h)
+{
+   int x = sizeof(a);
+   int y = sizeof(b);
+   int z = sizeof(h); 
+}

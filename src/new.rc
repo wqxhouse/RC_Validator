@@ -1,0 +1,26 @@
+function : void main(){
+        int a = 0;
+        int b = 1;
+
+        if ( b >= 0 ){
+                cout<<" GOOD "<<endl;
+                if ( b == 1){
+                        cout<<"GOOD"<<endl;
+                                if ( a == 0){
+                                        cout << "GOOD"<<endl;
+                                }
+                                else{
+                                        cout <<"BAD"<<endl;
+                                }
+                }
+                else{
+                        cout<<"BAD"<<endl;
+                }
+        }
+        else {
+                cout<<"BAD"<<endl;
+        }
+
+
+
+}
