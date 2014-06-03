@@ -6,6 +6,7 @@ os.chdir(".")
 # global vars
 isVoidMain = False;
 param_array_dict = {};
+ptr_des_dict = {};
 
 def isAllUpperCase(str) :
 	for l in str :
@@ -29,14 +30,78 @@ def process(str) :
 	str = process_tf(str);
 	str = process_void_main(str);
 	str = process_cout_cin_expr(str);
+
 	str = process_sizeof_param(str);
+	str = change_nullptr(str);
+	save_ptr_des(str);
+	str = process_new(str);
+#	str = substitute_bool(str);
+#	str = process_cout_bool(str);
 	
+	str = process_cout_float(str);	
+	return str;
+	
+def change_nullptr(str) :
+	if "nullptr" in str :
+		str = str.replace("nullptr", "0");
+	return str;
+	
+def save_ptr_des(str) :
+	global ptr_des_dict;
+	if "*" in str :
+		strarr = str.split('*');
+		type = strarr[0].strip();
+		des = strarr[1].strip();
+		if ";" in des :
+			des = des[: des.find(";") ];
+		ptr_des_dict[des] = type;
+			
+def substitute_bool(str) :
+	if 'bool' in str :
+		str = str.replace('bool', 'Bool');
+	return str;
+			
+def process_cout_bool(str) :
+	if "cout" in str :
+		str = str.replace(" ", "");
+		coutarr = str.split('<<');
+
+		count = 0;
+		for e in coutarr :
+			if (e != "cout") and (e != "endl") and (e != "endl;\n") and ("\"" not in e) :
+				coutarr[count] = "Bool::toString(" + e + ") << ";
+			elif (e == "cout") or (e == "endl") :
+				coutarr[count] = e + " << ";
+
+			count += 1;
+			
+		str = "".join(coutarr);
+	return str;
+		
+def process_new(str) :
+	res = str;
+	if "new" in str :
+		des = str[str.find("new") + 3 :];
+		if ";" in des :
+			des = des[: des.find(";") ];
+		des = des.strip();
+		res = '\t' + des + " = ";
+		if des in ptr_des_dict :
+			res += "new " + ptr_des_dict[des] + ";\n";
+			
+	return res;
+
+def process_cout_float(str) :
+	if "cout" in str :
+		str = str[: str.find('<<')] + " << std::fixed << std::setprecision(2) " +  str[str.find('<<') :];
 	return str;
 	
 def format_elem_coutcin(str) :
 	if ";" in str and "endl" not in str:
 		return "(" + str[: str.find(";")] + ")" + str[str.find(";") :];
 	elif ";" in str and "endl" in str:
+		return str;
+	elif "endl" in str :
 		return str;
 	else :
 		return "(" + str + ")"
@@ -117,10 +182,11 @@ def process_sizeof_param(str) :
 	return str;
 
 def process_tf(str) :
-	if "true" in str :
-		str = str.replace("true", "1");
-	if "false" in str :
-		str = str.replace("false", "0");
+	if ("true" in str) :
+		str = str.replace("true", "\"true\"");
+	elif ("false" in str) :
+		str = str.replace("false", "\"false\"");
+		
 		
 	return str;
 	
@@ -205,9 +271,81 @@ for filename in glob.glob("*.rc"):
 	file = open(filename, 'r');
 	write = open(filename + ".cpp", "w");
 	write.write("#include <iostream>\n");
+	write.write("#include <stdlib.h>\n");
+	write.write("#include <iomanip>\n");
+	write.write("#include <string.h>\n");
 	write.write("using namespace std;\n");
+	write.write("""class Bool{
+public: 
+	bool b;
+	static const char* toString(const Bool &b)
+	{
+		if( b.b ) return "true";
+		else return "false";
+	}
+        Bool() {}
+		
+		Bool( bool b) { this->b = b;}
+        
+	Bool ( const char *tf )
+        {
+          if(! strcmp(tf, "true") )  
+          {
+            b = 1;
+          } 
+          else
+          {
+            b = 0;
+          }
+
+        }
+        
+        Bool operator&& (const char* tf) 
+		{ 
+		  if(! strcmp(tf, "true") )  
+          {
+            return Bool(this->b && 1 );
+          } 
+          else
+          {
+            return Bool(this->b && 0 );
+          }
+		}
+		
+		Bool operator|| (const char* tf) 
+		{ 
+		  if(! strcmp(tf, "true") )  
+          {
+            return Bool(this->b || 1 );
+          } 
+          else
+          {
+            return Bool(this->b || 0 );
+          }
+		}
+		
+		Bool operator !() const { return Bool( !b ); }
+
+
+        Bool& operator=(const char *tf )
+        { 
+          if(! strcmp(tf, "true") )  
+          {
+            b = 1;
+          } 
+          else
+          {
+            b = 0;
+          }
+        } 
+	
+	static int toString(int x) { return x; }
+	static float toString(float x) { return x; }
+};\n""");
+
 	count = 0;
 	for line in file :
+		#line = line.strip();
 		if line not in ['\n', '\r\n'] : 
 			line = process(line);
 			write.write(line);
@@ -219,7 +357,7 @@ for filename in glob.glob("*.rc"):
 		contents = write.readlines();
 		write.close();
 
-		contents.insert(count-1+2, "   return 0;\n");
+		contents.insert(count-1+5+67, "   return 0;\n");
 		contents = "".join(contents);
 
 		write = open(filename + ".cpp", "w");
